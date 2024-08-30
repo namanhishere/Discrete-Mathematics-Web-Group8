@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark" id="html-main">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ho Chi Minh City Path Finding</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        #map{
+            height: 800px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div claas="container"> 
+            <div style="margin: 2%;"></div>
+            <div class="card text-center">
+                <h2>Path Finding Tool - Ho Chi Minh City</h2>
+                <p>Big Project by Group 8 Class CC01 of Discrete Mathematics at Ho Chi Minh City University of Technology in Semester HK233</p>
+                <div style="display: inline-block"><a href="https://github.com/namanhishere/Discrete-Mathematics-HCMUT">Github Repository</a>  - <a>Report</a> - <a onclick="switchMode()" href="#" id="modeSwitchA">Switch to Light mode</a></div>
+            </div>
+        </div>
+        <div style="margin: 2%;"></div>
+
+        <div class="card card-body">
+            <h5 class="card-title">Readme</h5>
+            <ul>
+                <li>Responsive webpage may not working well on Mobile Device or other rather than the v8 engine. Desktop version of Chromenium is pefered </li>
+                <li>There are 2 version of data : <strong>v1</strong> (exported at 12:31 AM 11 August 2024 GMT +7) and <strong>v2</strong> (exported at 10:05 PM 22 August 2024 GMT +7). Please change it at the format graph_data_[version].json</li>
+                <li>If you want change the version of the data, change the location,..etc. <strong>Page reload is required</strong></li>
+                <li>Althought input is mostly pre-loaded. <strong>Pressing all the Load data button is required</strong></li>
+
+            </ul>
+        </div>
+
+
+        <div style="margin: 2%;"></div>
+
+        <div class="card card-body p-3">
+            <h5 class="card-title">Configuration</h5>
+            <ul>
+                <li>
+                    <strong style="margin:0">1. Input the matrix here:</strong>
+                    <input type="text" id="modelNameInputJSON" class="form-control me-2" value="graph_data_v2.json">
+                    <div style="margin: 1%;"></div>
+                    <button id="btn1.1" class="btn btn-success">Load data</button>
+            <div id="panel"></div>
+
+                </li>
+                <div style="margin: 2%;"></div>
+                <li>
+                    <strong style="margin:0">2. Input Point:</strong>
+                    <!-- <input type="text" id="modelNameInputJSON" class="form-control me-2" value="graph_data_beauti4.json"> -->
+
+                    <div style="display: flex; align-items: center;">
+                        <input type="text" class="form-control" id="startcordInput" value="10.77156, 106.65797">
+                        ==========>
+                        <input type="text" class="form-control" id="endcordInput" value="10.77193, 106.69804">
+                    </div>
+                    <small>Pre-loaded data inputed as Ly Thương Kiet Gate of HCMUT as arrvial and Ben Thanh Martket at destination</small>
+                    <div style="margin: 1%;"></div>
+                    <button id="btn2" class="btn btn-success">Load data</button>
+                </li>
+                <div style="margin: 2%;"></div>
+
+                <li>
+                    <strong style="margin:0">3. Number of shortest path:</strong>
+                    <input type="text" class="form-control" id="numOfShortest" value="3">
+                    <!-- <div style="margin: 1%;"></div> -->
+                    <!-- <button id="btn2" class="btn btn-success">Load data</button> -->
+                </li>
+
+                <div style="margin: 2%;"></div>
+                <li>
+                    <strong style="margin:0">4. Function Button:</strong>
+                    <!-- <input type="text" id="modelNameInputJSON" class="form-control me-2" value="graph_data_beauti4.json"> -->
+
+                    <div style="display: flex; align-items: center;">
+                        <button id="btn3" class="btn btn-danger">Run</button>
+                        <div id="listbtnpanel"></div>
+                    <div style="margin: 1%;"></div>
+                </li>
+            </ul>
+        </div>
+
+        <div style="margin: 2%;"></div>
+
+        <div class="card card-body p-3">
+            <h5 class="card-title">Maps</h5>
+            <div id="map"></div>
+
+        </div>
+
+        <div style="margin: 2%;"></div>
+        <div class="card card-body p-3">
+            <h5 class="card-title">Path Infomation</h5>
+            <div id="distance"></div>
+
+        </div>
+    </div>
+    </div>
+
+
+    
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+    <script>
+        var isLightMode = false;
+        var shortest3Path = []
+
+        function switchMode(){
+            document.getElementById("modeSwitchA").innerHTML = "Switch to "+ (isLightMode ? "Light":"Dark" )+ " Mode";
+            isLightMode = !isLightMode;
+
+            document.getElementById("html-main").setAttribute("data-bs-theme", isLightMode?"":"dark");
+
+        }
+
+
+
+        const map = L.map('map').setView([10.7689823, 106.6525092], 14);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        class PriorityQueue {
+            constructor() {
+                this.queue = [];
+            }
+
+            enqueue(element, priority) {
+                this.queue.push({ element, priority });
+                this.queue.sort((a, b) => a.priority - b.priority);
+            }
+
+            dequeue() {
+                return this.queue.shift().element;
+            }
+
+            isEmpty() {
+                return this.queue.length === 0;
+            }
+        }
+        class PathFinding {
+            constructor(adjacencyMatrix) {
+                this.adjacencyMatrix = adjacencyMatrix;
+                this.numNodes = adjacencyMatrix.length;
+            }
+
+            setStartNode(start) {
+                this.startNode = start;
+            }
+
+            setEndNode(end) {
+                this.endNode = end;
+            }
+
+            dijkstra(startNode, endNode) {
+                const distances = Array(this.numNodes).fill(Infinity);
+                const previous = Array(this.numNodes).fill(null);
+                const visited = Array(this.numNodes).fill(false);
+
+                distances[startNode] = 0;
+                const pq = new PriorityQueue();
+                pq.enqueue(startNode, 0);
+
+                while (!pq.isEmpty()) {
+                    const currentNode = pq.dequeue();
+                    visited[currentNode] = true;
+
+                    if (currentNode === endNode) break; // Found the shortest path
+
+                    const neighbors = this.adjacencyMatrix[currentNode];
+                    for (let neighbor = 0; neighbor < this.numNodes; neighbor++) {
+                        if (neighbors[neighbor] > 0 && !visited[neighbor]) {
+                            const newDist = distances[currentNode] + neighbors[neighbor];
+                            if (newDist < distances[neighbor]) {
+                                distances[neighbor] = newDist;
+                                previous[neighbor] = currentNode;
+                                pq.enqueue(neighbor, newDist);
+                            }
+                        }
+                    }
+                }
+
+                return this.constructPath(previous, endNode);
+            }
+
+            constructPath(previous, endNode) {
+                const path = [];
+                let currentNode = endNode;
+
+                while (previous[currentNode] !== null) {
+                    path.push(currentNode);
+                    currentNode = previous[currentNode];
+                }
+                path.push(currentNode); // Add start node
+                return path.reverse();
+            }
+
+            findKShortestPaths(k) {
+                // Find the shortest path
+                const firstPath = this.dijkstra(this.startNode, this.endNode);
+                const paths = [firstPath];
+                const potentialPaths = new PriorityQueue();
+
+                for (let i = 1; i < k; i++) {
+                    const lastPath = paths[paths.length - 1];
+                    for (let j = 0; j < lastPath.length - 1; j++) {
+                        const spurNode = lastPath[j];
+                        const rootPath = lastPath.slice(0, j + 1);
+
+                        const adjMatrixCopy = this.adjacencyMatrix.map(row => row.slice());
+
+                        // Remove the links that are part of the previous paths
+                        for (const path of paths) {
+                            if (path.length > j && rootPath.every((value, index) => value === path[index])) {
+                                adjMatrixCopy[path[j]][path[j + 1]] = 0;
+                            }
+                        }
+
+                        // Run Dijkstra from the spur node to the end node
+                        const spurPathFinder = new PathFinding(adjMatrixCopy);
+                        spurPathFinder.setStartNode(spurNode);
+                        spurPathFinder.setEndNode(this.endNode);
+                        const spurPath = spurPathFinder.dijkstra(spurNode, this.endNode);
+
+                        if (spurPath.length > 1) {
+                            const totalPath = [...rootPath.slice(0, -1), ...spurPath];
+                            potentialPaths.enqueue(totalPath, this.calculatePathDistance(totalPath));
+                        }
+                    }
+
+                    if (potentialPaths.isEmpty()) {
+                        break;
+                    }
+
+                    // Add the shortest potential path to the list of paths
+                    paths.push(potentialPaths.dequeue());
+                }
+
+                return paths;
+            }
+
+            calculatePathDistance(path) {
+                let distance = 0;
+                for (let i = 0; i < path.length - 1; i++) {
+                    distance += this.adjacencyMatrix[path[i]][path[i + 1]];
+                }
+                return distance;
+            }
+        }
+
+
+        class Matrix {
+            constructor(rows, cols) {
+                this.rows = rows;
+                this.cols = cols;
+                this.matrix = Array.from({ length: rows }, () => Array(cols).fill(0));
+                this.accessCount = 0;
+                this.editCount = 0;
+                this.accessEventListeners = [];
+
+                this.matrixHeader = Array.from({ length: rows }, () => Array(2).fill(0));
+            }
+
+            // Store a new matrix
+            setMatrix(matrix) {
+                if (matrix.length !== this.rows || matrix[0].length !== this.cols) {
+                    throw new Error("Matrix dimensions must match");
+                }
+                this.matrix = matrix;
+                this.editCount++;
+            }
+
+            // Edit matrix without counting access
+            editMatrixNoCount(row, col, value) {
+                if (row >= this.rows || col >= this.cols) {
+                    throw new Error("Index out of bounds");
+                }
+                this.matrix[row][col] = value;
+            }
+
+            // Edit matrix with counting access
+            editMatrix(row, col, value) {
+                this.editMatrixNoCount(row, col, value);
+                this.editCount++;
+            }
+
+            // Read matrix without counting access
+            getMatrixNoCount() {
+                return this.matrix;
+            }
+
+            // Read matrix with counting access
+            getMatrix() {
+                this.accessCount++;
+                this.triggerAccessEvent();
+                return this.matrix;
+            }
+
+            // Read a specific element with counting access
+            getElement(row, col) {
+                if (row >= this.rows || col >= this.cols) {
+                    throw new Error("Index out of bounds");
+                }
+                this.accessCount++;
+                this.triggerAccessEvent();
+                return this.matrix[row][col];
+            }
+
+            // Read a specific element without counting access
+            getElementNoCount(row, col) {
+                if (row >= this.rows || col >= this.cols) {
+                    throw new Error("Index out of bounds");
+                }
+                return this.matrix[row][col];
+            }
+
+            // Add an event listener for matrix access events
+            onAccess(callback) {
+                this.accessEventListeners.push(callback);
+            }
+
+            // Trigger access event listeners
+            triggerAccessEvent() {
+                this.accessEventListeners.forEach(callback => callback(this.accessCount));
+            }
+
+            // Get the number of accesses
+            getAccessCount() {
+                return this.accessCount;
+            }
+
+            // Get the number of edits
+            getEditCount() {
+                return this.editCount;
+            }
+
+            getNumberOfValueDifferZero() {
+                let count = 0;
+                for (let i = 0; i < this.rows; i++) {
+                    for (let j = i; j < this.cols; j++) {
+                        if (this.matrix[i][j] !== 0) {
+                            count++;
+                        }
+                    }
+                }
+                return count;
+            }
+
+            saveMatrixHeader(lat, lon, index) {
+                this.matrixHeader[index][0] = lat;
+                this.matrixHeader[index][1] = lon;
+            }
+
+            findNearestNode(lat, lon) {
+                let min = 9999999999; // Use Infinity for better readability
+                let index = -1;
+
+                console.log(this.matrixHeader);
+
+                for (let i = 0; i < this.rows; i++) {
+                    let lat1 = this.matrixHeader[i][1];
+                    let lon1 = this.matrixHeader[i][0];
+
+                    // Correct distance calculation
+                    let distance = Math.sqrt((lat1 - lat) ** 2 + (lon1 - lon) ** 2);
+
+                    if (distance < min) {
+                        min = distance;
+                        index = i;
+                    }
+                }
+
+                return index;
+            }
+
+        }
+
+        // Create a new matrix
+        var matrix;
+
+        // creeate a fb
+        var bf;
+        //get the matrix from file11.csv
+        async function getMatrix(modelName) {
+            const response = await fetch(modelName);
+            const data = await response.text();
+            const rows = data.split('\n');
+            matrix = new Matrix(rows.length - 1, rows.length - 1);
+            for (let i = 1; i < rows.length; i++) {
+                // matrix.setMatrix(rows[i].split(',').map(Number));
+                let col = rows[i].split(',');
+                for (let j = 2; j < col.length; j++) {
+                    matrix.editMatrixNoCount(i - 1, j - 1, parseFloat(col[j]));
+                    // matrix.saveMatrixHeader(parseFloat(col[0]), parseFloat(col[1]), i-1);
+                    let coords1 = col[0].split('(')[1].replace(/^\s+|\s+$/gm, '');
+                    let coords2 = col[1].split(')')[0].replace(/^\s+|\s+$/gm, '');
+                    bf = new PathFinding(matrix.getMatrixNoCount());
+                    // console.log(coords);
+                    matrix.saveMatrixHeader(parseFloat(coords1), parseFloat(coords2), i - 1);
+                }
+            }
+            // matrix.setMatrix(rows);
+            // console.log(matrix.getMatrix());
+
+
+
+            //update the total of node and edge
+            document.getElementById('panel').innerHTML = `
+                <p><strong>ModelName loaded: </strong>${modelName}</p>
+                <p><strong>Total of node loaded: </strong>${matrix.rows}</p>
+                <p><strong>Total of edge loaded: </strong>${matrix.getNumberOfValueDifferZero() / 2}</p>
+            `;
+        }
+
+        async function getMatrixJSON(modelName) {
+            const response = await fetch(modelName);
+            const data = await response.json();
+            console.log(data.nodes.length)
+            matrix = new Matrix(data.nodes.length, data.nodes.length);
+            for (let i = 0; i < data.nodes.length; i++) {
+                matrix.saveMatrixHeader(parseFloat(data.nodes[i].coords.lon), parseFloat(data.nodes[i].coords.lat), data.nodes[i].id);
+            }
+
+            for (let i = 0; i < data.edges.length; i++) {
+                // matrix.saveMatrixHeader(parseFloat(data.edges[i].coords.lat), parseFloat(data.edges[i].coords.lon), data.nodes[i]);
+                matrix.editMatrixNoCount(data.edges[i].start_node.id, data.edges[i].end_node.id, data.edges[i].distance);
+            }
+            // matrix.setMatrix(rows);
+            console.log(matrix.getMatrix());
+
+            bf = new PathFinding(matrix.getMatrixNoCount());
+
+            //update the total of node and edge
+            document.getElementById('panel').innerHTML = `
+                <p><strong>ModelName loaded: </strong>${modelName}</p>
+                <p><strong>Total of node loaded: </strong>${matrix.rows}</p>
+                <p><strong>Total of edge loaded: </strong>${matrix.getNumberOfValueDifferZero() }</p>
+            `;
+        }
+        // document.getElementById('btn1').onclick = () => {
+        //     getMatrix(document.getElementById('modelNameInput').value); ///only working on debug
+        // }
+        document.getElementById('btn1.1').onclick = () => {
+            getMatrixJSON(document.getElementById('modelNameInputJSON').value);
+        }
+        document.getElementById("btn2").onclick = () => {
+            const startcord = document.getElementById('startcordInput').value.split(',');
+            const endcord = document.getElementById('endcordInput').value.split(',');
+            const startlat = parseFloat(startcord[0]);
+            const startlon = parseFloat(startcord[1]);
+            const endlat = parseFloat(endcord[0]);
+            const endlon = parseFloat(endcord[1]);
+
+
+            if (!isNaN(startlat) && !isNaN(startlon) && !isNaN(endlat) && !isNaN(endlon)) {
+                map.setView([startlat, startlon], 15);
+                //find nearest node
+                let startIndex = matrix.findNearestNode(startlat, startlon);
+                let endIndex = matrix.findNearestNode(endlat, endlon);
+                console.log(startIndex, endIndex);
+                bf.setStartNode(startIndex);
+                bf.setEndNode(endIndex);
+                L.marker([startlat, startlon]).addTo(map).bindPopup('Start Coordinate').openPopup();
+                L.marker([endlat, endlon]).addTo(map).bindPopup('End Coordinate').openPopup();
+            } else {
+                alert('Please enter valid coordinates.');
+            }
+        }
+
+        document.getElementById("btn3").onclick = () => {
+            let numOfShortestPat = parseInt(document.getElementById('numOfShortest').value);
+            const paths = bf.findKShortestPaths(numOfShortestPat);
+            console.log(paths);
+
+            shortest3Path = paths;
+            document.getElementById('distance').innerHTML = "";
+            // const latlngs = path.map(node => {
+            //     return [matrix.matrixHeader[node][1], matrix.matrixHeader[node][0]];
+            // });
+
+            // path.forEach((node, i) => {
+            //     L.marker([matrix.matrixHeader[node][1], matrix.matrixHeader[node][0]]).addTo(map).bindPopup(`${i + 1}. Node ${node}`).openPopup();
+
+            // });
+
+            // //add point in path and connect togethter
+            // for (let i = 0; i < path.length - 1; i++) {
+            //     const start = path[i];
+            //     const end = path[i + 1];
+            //     L.polyline([
+            //         [matrix.matrixHeader[start][1], matrix.matrixHeader[start][0]],
+            //         [matrix.matrixHeader[end][1], matrix.matrixHeader[end][0]]
+            //     ], { color: 'red' }).addTo(map);
+            // }
+
+            // let colorList =;
+
+            for (let i = 0; i < paths[0].length - 1; i++) {
+                    const start = paths[0][i];
+                    const end = paths[0][i + 1];
+                    // L.polyline([
+                    //     [matrix.matrixHeader[start][1], matrix.matrixHeader[start][0]],
+                    //     [matrix.matrixHeader[end][1], matrix.matrixHeader[end][0]]
+                    // ], { color: colorList[i] }).addTo(map);
+
+                    // paths[0].forEach((node, i) => {
+                    //     L.marker([matrix.matrixHeader[node][1], matrix.matrixHeader[node][0]]).addTo(map).bindPopup(`${i + 1}. Node ${node}`).openPopup();
+                    // });
+
+                    //add a layer to map
+                    L.polyline([
+                        [matrix.matrixHeader[start][1], matrix.matrixHeader[start][0]],
+                        [matrix.matrixHeader[end][1], matrix.matrixHeader[end][0]]
+                    ], { color: "red" }).addTo(map);
+                    
+                    //add a btn view path id only
+                   
+            }
+            paths.forEach((path, k) => {
+
+                document.getElementById('listbtnpanel').innerHTML += `
+                        <button onclick="viewPath(${k})" class="btn btn-success" >View Path ${k + 1}</button>
+                    `;
+
+                document.getElementById('distance').innerHTML += `
+                    <p><strong>Path ${k + 1}:</strong> ${path.map(node => `Node ${node}`).join(' -> ')}</p>
+                    <p><strong>Distance:</strong> ${bf.calculatePathDistance(path)} meters</p>
+                `;
+            })
+        }
+
+
+
+
+
+        document.getElementById("btn4").onclick = () => {
+            map.eachLayer((layer) => {
+                if (layer instanceof L.Marker || layer instanceof L.Polyline) {
+                    layer.remove();
+                }
+            });
+        }
+
+        function viewPath(id) {
+            map.eachLayer((layer) => {
+                if (layer instanceof L.Marker || layer instanceof L.Polyline) {
+                    layer.remove();
+                }
+            });
+
+            const paths = shortest3Path;
+            let colorList = ['red', 'blue', 'green', 'purple', 'orange', 'yellow', 'brown', 'pink', 'gray', 'black'];
+
+            const path = paths[id];
+            for (let i = 0; i < path.length - 1; i++) {
+                const start = path[i];
+                const end = path[i + 1];
+                L.polyline([
+                    [matrix.matrixHeader[start][1], matrix.matrixHeader[start][0]],
+                    [matrix.matrixHeader[end][1], matrix.matrixHeader[end][0]]
+                ], { color: colorList[id%10] }).addTo(map);
+            }
+        }
+
+        document.getElementById("btn5").onclick = () => {
+            map.eachLayer((layer) => {
+                if (layer instanceof L.Marker || layer instanceof L.Polyline) {
+                    layer.remove();
+                }
+            });
+
+            for (let i = 0; i < matrix.rows; i++) {
+                L.marker([matrix.matrixHeader[i][1], matrix.matrixHeader[i][0]]).addTo(map).bindPopup(`Node ${i}`).openPopup();
+            }
+
+            for(let i = 0; i< matrix.rows; i++){
+                for(let j = 0; j< matrix.cols; j++){
+                    if(matrix.getElementNoCount(i, j) > 0){
+                        L.polyline([
+                            [matrix.matrixHeader[i][1], matrix.matrixHeader[i][0]],
+                            [matrix.matrixHeader[j][1], matrix.matrixHeader[j][0]]
+                        ], { color: 'black' }).addTo(map);
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>
